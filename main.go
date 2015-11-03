@@ -28,7 +28,7 @@ func (p *Package) String() string {
 func main() {
 	var err error
 	if len(os.Args) > 2 && os.Args[1] == "search" {
-		err = search(os.Args[2])
+		err = search(packageBaseName(os.Args[2]))
 	} else {
 		err = install()
 	}
@@ -137,4 +137,12 @@ func getPackage(pack Package, target string) (string, error) {
 	}
 
 	return hash, nil
+}
+
+func packageBaseName(name string) string {
+	tokens := strings.Split(name, "/")
+	if len(tokens) > 2 {
+		return strings.Join(tokens[:2], "/")
+	}
+	return name
 }
