@@ -26,33 +26,38 @@ func (p *Package) String() string {
 }
 
 func main() {
-	var (
-		err      error
-		fileName string
-		wrap     func(string) string
-	)
-	if _, err = os.Stat(DepfileLock); os.IsExist(err) {
-		fileName = DepfileLock
-		wrap = noWrap
+	var err error
+	if len(os.Args) > 2 && os.Args[1] == "search" {
+		err = search(os.Args[2])
 	} else {
-		fileName = Depfile
-		wrap = wrapTag
+		err = install()
 	}
+	printResult(err)
+}
+
+func install() error {
+	var err error
+	fileName, wrap := restoreCheck()
 	packages, err := parseFile(fileName)
 	if err != nil {
-		printResult(err)
-		os.Exit(2)
+		return err
 	}
 	for i, pack := range packages {
 		var err error
 		packages[i].hash, err = getPackage(pack, wrap(pack.version))
 		if err != nil {
-			printResult(err)
-			os.Exit(2)
+			return err
 		}
 	}
 	saveLock(packages)
-	printResult(nil)
+	return nil
+}
+
+func restoreCheck() (string, func(string) string) {
+	if _, err := os.Stat(DepfileLock); os.IsExist(err) {
+		return DepfileLock, noWrap
+	}
+	return Depfile, wrapTag
 }
 
 func noWrap(str string) string {
@@ -119,9 +124,7 @@ func getPackage(pack Package, target string) (string, error) {
 		return "", fmt.Errorf("Error getting package %s", pack.name)
 	}
 
-	gopath := os.Getenv("GOPATH")
-	packageRoot := packageGitDir(pack.url)
-	gitClient := newGit(gopath, packageRoot)
+	gitClient := newGit(os.Getenv("GOPATH"), pack.url)
 	if pack.version != "latest" {
 		err = gitClient.checkout(target)
 		if err != nil {
@@ -134,12 +137,4 @@ func getPackage(pack Package, target string) (string, error) {
 	}
 
 	return hash, nil
-}
-
-func packageGitDir(name string) string {
-	tokens := strings.Split(name, "/")
-	if len(tokens) > 3 {
-		return strings.Join(tokens[:3], "/")
-	}
-	return name
 }

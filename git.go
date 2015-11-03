@@ -11,7 +11,8 @@ type git struct {
 	gitDir   string
 }
 
-func newGit(gopath string, packageRoot string) *git {
+func newGit(gopath string, packageURL string) *git {
+	packageRoot := packageGitDir(packageURL)
 	return &git{
 		workTree: fmt.Sprintf("--work-tree=%s/src/%s", gopath, packageRoot),
 		gitDir:   fmt.Sprintf("--git-dir=%s/src/%s/.git", gopath, packageRoot),
@@ -31,4 +32,12 @@ func (g *git) currentCommitHash() (string, error) {
 
 func (g *git) params() string {
 	return fmt.Sprintf("%s %s", g.workTree, g.gitDir)
+}
+
+func packageGitDir(name string) string {
+	tokens := strings.Split(name, "/")
+	if len(tokens) > 3 {
+		return strings.Join(tokens[:3], "/")
+	}
+	return name
 }
